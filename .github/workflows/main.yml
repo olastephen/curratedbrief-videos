@@ -73,3 +73,17 @@ jobs:
           path: out/*.mp4
           if-no-files-found: error
           retention-days: 14
+
+      # Posts the video to YouTube, LinkedIn, Instagram, TikTok and X through Postiz.
+      # Only runs for Make-triggered renders, never for manual template runs.
+      # Starts as drafts in Postiz; set the repository variable POST_MODE=schedule to go live.
+      - name: Post to social media (via Postiz)
+        if: github.event_name == 'repository_dispatch'
+        timeout-minutes: 10
+        env:
+          POSTIZ_API_URL: ${{ secrets.POSTIZ_API_URL }}
+          POSTIZ_API_KEY: ${{ secrets.POSTIZ_API_KEY }}
+          POST_MODE: ${{ vars.POST_MODE || 'draft' }}
+          SOURCE_URL: ${{ github.event.client_payload.source_url }}
+          VIDEO: out/today.mp4
+        run: node scripts/publish.mjs
