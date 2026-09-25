@@ -6,7 +6,7 @@ category tags (#81D742 green, #1E73BE blue). The logo and icon are in `public/`.
 
 ## Setup (once)
 
-Needs Node.js 18 or newer.
+Needs Node.js 22 (the same version the GitHub Action uses).
 
     npm install
 
@@ -23,6 +23,15 @@ This opens Remotion Studio in your browser, where you can scrub through all thre
     npm run render:automate   # out/automate-this.mp4
 
 The first render downloads a headless browser, which takes a minute.
+
+## Render on GitHub (no computer needed)
+
+1. Open the repo on github.com and click the **Actions** tab.
+2. In the left sidebar click **Render videos**.
+3. Click the **Run workflow** button (right side), pick a video (or `all`), then click the green **Run workflow**.
+4. When the run shows a green tick (a few minutes), click it, scroll to **Artifacts** at the bottom and click **videos** to download a zip of the MP4s. Downloads are kept for 14 days.
+
+The workflow file is `.github/workflows/main.yml`.
 
 ## Make a new video without touching code
 

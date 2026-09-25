@@ -1,6 +1,6 @@
 import React from "react";
 import { AbsoluteFill, Img, interpolate, staticFile, useCurrentFrame } from "remotion";
-import { SAFE, type Theme } from "./brand";
+import { SAFE, WIDTH, type Theme } from "./brand";
 import { CountUp, Grow, In, Pop, Wipe } from "./Motion";
 import type { Scene } from "./types";
 
@@ -12,6 +12,18 @@ const type = {
   fine: { fontSize: 40, lineHeight: 1.4, fontWeight: 500, margin: 0 },
   quote: { fontSize: 158, lineHeight: 0.95, fontWeight: 900, letterSpacing: "-0.03em", margin: 0 },
 } satisfies Record<string, React.CSSProperties>;
+
+/** Width of the text column inside the safe area */
+const SAFE_W = WIDTH - SAFE.left - SAFE.right;
+
+/** Rough glyph widths for heavy Rubik, in ems (slightly generous so we err on the small side) */
+const em = (ch: string) => (/[A-Z0-9%$€£&@#]/.test(ch) ? 0.76 : /[a-z]/.test(ch) ? 0.62 : 0.36);
+
+/** Shrinks a font size so the longest word fits the given width instead of running off screen */
+const fit = (text: string, size: number, width = SAFE_W) => {
+  const widest = Math.max(...text.split(/\s+/).map((w) => [...w].reduce((sum, ch) => sum + em(ch), 0)));
+  return Math.min(size, Math.floor(width / widest));
+};
 
 const Layout: React.FC<{ children: React.ReactNode; center?: boolean }> = ({ children, center }) => (
   <AbsoluteFill
@@ -41,8 +53,8 @@ function render(s: Scene, t: Theme): React.ReactNode {
     case "headline":
       return (
         <Layout>
-          <In><h1 style={type.h1}>{s.text}</h1></In>
-          {s.sub && <In delay={18}><p style={{ ...type.h2, color: t.accent }}>{s.sub}</p></In>}
+          <In><h1 style={{ ...type.h1, fontSize: fit(s.text, type.h1.fontSize) }}>{s.text}</h1></In>
+          {s.sub && <In delay={18}><p style={{ ...type.h2, fontSize: fit(s.sub, type.h2.fontSize), color: t.accent }}>{s.sub}</p></In>}
         </Layout>
       );
 
@@ -50,7 +62,7 @@ function render(s: Scene, t: Theme): React.ReactNode {
       return (
         <Layout>
           <Pop>
-            <div style={{ fontSize: 500, lineHeight: 0.82, fontWeight: 900, letterSpacing: "-0.05em", color: t.accent }}>
+            <div style={{ fontSize: fit(`${s.prefix ?? ""}${s.value.toFixed(s.decimals ?? 0)}${s.suffix ?? ""}`, 500), lineHeight: 0.82, fontWeight: 900, letterSpacing: "-0.05em", color: t.accent }}>
               <CountUp value={s.value} decimals={s.decimals} prefix={s.prefix} suffix={s.suffix} />
             </div>
           </Pop>
@@ -67,7 +79,7 @@ function render(s: Scene, t: Theme): React.ReactNode {
             {s.items.map((item, i) => (
               <In key={i} delay={10 + i * 30} style={{ position: "relative" }}>
                 <div style={{ position: "absolute", left: -70, top: 14, width: 34, height: 34, borderRadius: 17, background: t.accent }} />
-                <div style={{ fontSize: 64, fontWeight: 900 }}>{item.when}</div>
+                <div style={{ fontSize: fit(item.when, 64, SAFE_W - 70), fontWeight: 900 }}>{item.when}</div>
                 <div style={{ ...type.cite, color: t.muted, marginTop: 8 }}>{item.what}</div>
               </In>
             ))}
@@ -79,7 +91,7 @@ function render(s: Scene, t: Theme): React.ReactNode {
       return (
         <Layout>
           {s.place && <In><p style={{ ...type.label, color: t.accent }}>{s.place}</p></In>}
-          <Wipe delay={s.place ? 12 : 0}><p style={type.quote}>“{s.quote}”</p></Wipe>
+          <Wipe delay={s.place ? 12 : 0}><p style={{ ...type.quote, fontSize: fit(`“${s.quote}”`, type.quote.fontSize) }}>“{s.quote}”</p></Wipe>
           <In delay={28}><p style={{ ...type.cite, color: t.muted }}>{s.cite}</p></In>
         </Layout>
       );
@@ -89,7 +101,7 @@ function render(s: Scene, t: Theme): React.ReactNode {
         <Layout>
           <In><p style={type.h2}>{s.text}</p></In>
           <In delay={42}>
-            <p style={{ ...type.h1, fontSize: 96, color: t.bg, background: t.accent, padding: "18px 30px", borderRadius: 24, display: "inline-block" }}>
+            <p style={{ ...type.h1, fontSize: fit(s.highlight, 96, SAFE_W - 60), color: t.bg, background: t.accent, padding: "18px 30px", borderRadius: 24, display: "inline-block" }}>
               {s.highlight}
             </p>
           </In>
@@ -129,9 +141,10 @@ function render(s: Scene, t: Theme): React.ReactNode {
     }
 
     case "flow": {
-      const node = (n: { title: string; note?: string }, center = false): React.ReactNode => (
+      // Text width inside a node is its box width minus 44px padding each side
+      const node = (n: { title: string; note?: string }, center = false, width = SAFE_W): React.ReactNode => (
         <div style={{ background: t.nodeBg, color: t.nodeFg, borderRadius: 34, padding: "36px 44px", textAlign: center ? "center" : "left" }}>
-          <div style={{ fontSize: 58, fontWeight: 900, lineHeight: 1.1 }}>{n.title}</div>
+          <div style={{ fontSize: fit(n.title, 58, width - 88), fontWeight: 900, lineHeight: 1.1 }}>{n.title}</div>
           {n.note && <div style={{ fontSize: 40, fontWeight: 500, opacity: 0.75, marginTop: 8 }}>{n.note}</div>}
         </div>
       );
@@ -148,11 +161,12 @@ function render(s: Scene, t: Theme): React.ReactNode {
           d += 10;
         }
       });
-      if (s.split) {
+      const split = s.split;
+      if (split) {
         items.push(
-          <div key="split" style={{ display: "grid", gridTemplateColumns: `repeat(${s.split.length}, 1fr)`, gap: 30, width: "100%" }}>
-            {s.split.map((n, i) => (
-              <Pop key={i} delay={d + i * 12}>{node(n, true)}</Pop>
+          <div key="split" style={{ display: "grid", gridTemplateColumns: `repeat(${split.length}, 1fr)`, gap: 30, width: "100%" }}>
+            {split.map((n, i) => (
+              <Pop key={i} delay={d + i * 12}>{node(n, true, (SAFE_W - 30 * (split.length - 1)) / split.length)}</Pop>
             ))}
           </div>
         );
@@ -168,7 +182,7 @@ function render(s: Scene, t: Theme): React.ReactNode {
       return (
         <Layout>
           <In><p style={{ ...type.label, color: t.accent === t.fg ? t.muted : t.accent }}>{s.label}</p></In>
-          <In delay={12}><h1 style={type.h1}>{s.text}</h1></In>
+          <In delay={12}><h1 style={{ ...type.h1, fontSize: fit(s.text, type.h1.fontSize) }}>{s.text}</h1></In>
         </Layout>
       );
 
