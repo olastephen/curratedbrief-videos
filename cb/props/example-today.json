@@ -1,0 +1,11 @@
+{
+  "theme": "news",
+  "category": "AI agents",
+  "scenes": [
+    { "type": "headline", "seconds": 3.4, "text": "Your hook goes here." },
+    { "type": "count", "seconds": 3.4, "value": 84, "text": "the number that matters, explained." },
+    { "type": "quote", "seconds": 3.6, "quote": "Short quote.", "cite": "Who said it" },
+    { "type": "lesson", "seconds": 5, "text": "What it means.", "highlight": "The takeaway." },
+    { "type": "end", "seconds": 3.6, "line": "Full breakdown on the site." }
+  ]
+}

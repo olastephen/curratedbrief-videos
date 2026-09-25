@@ -1,0 +1,25 @@
+{
+  "name": "curratedbrief-videos",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Branded vertical short videos for CurratedBrief, built with Remotion",
+  "scripts": {
+    "start": "remotion studio",
+    "render:daily": "remotion render DailyBrief out/daily-brief.mp4",
+    "render:numbers": "remotion render ByTheNumbers out/by-the-numbers.mp4",
+    "render:automate": "remotion render AutomateThis out/automate-this.mp4",
+    "render:all": "npm run render:daily && npm run render:numbers && npm run render:automate",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.529",
+    "@remotion/google-fonts": "4.0.529",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "remotion": "4.0.529"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "typescript": "^5.6.0"
+  }
+}
