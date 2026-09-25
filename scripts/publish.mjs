@@ -14,6 +14,7 @@ const KEY = process.env.POSTIZ_API_KEY || "";
 const MODE = process.env.POST_MODE === "schedule" ? "schedule" : "draft";
 const VIDEO = process.env.VIDEO || "out/today.mp4";
 const SOURCE_URL = process.env.SOURCE_URL || "";
+const PROPS_FILE = process.env.PROPS_FILE || "props/today.json";
 
 if (!API || !KEY) {
   console.log("Postiz secrets not set, so skipping social posting. The video is still in the run's artifacts.");
@@ -86,7 +87,7 @@ function buildPosts(a) {
     // No link at all on X: automated URL posts are expensive on the X API.
     // Add the article link yourself as a reply from the X app, per the CurratedBrief playbook.
     x: {
-      value: [cut(a.title, 270)],
+      value: [a.xHook || cut(a.title, 270)],
       settings: { who_can_reply_post: "everyone" },
     },
     // Link goes in the first comment
@@ -112,6 +113,14 @@ function buildPosts(a) {
 
 // ---------- main ----------
 const article = await getArticle();
+
+// X hook written by Make's AI alongside the video script (falls back to the headline)
+try {
+  const props = JSON.parse(await readFile(PROPS_FILE, "utf8"));
+  const hook = typeof props.x_hook === "string" ? props.x_hook.replace(/https?:\/\/\S+/g, "").replace(/\s+/g, " ").trim() : "";
+  if (hook) article.xHook = cut(hook, 270);
+} catch {}
+console.log(`X text: ${article.xHook ? "AI hook" : "headline (no hook found)"}`);
 console.log(`Article: ${article.title}\nLink: ${article.link}\nMode: ${MODE}`);
 
 const integrations = await api("/public/v1/integrations");
