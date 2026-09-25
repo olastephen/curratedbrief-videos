@@ -1,0 +1,57 @@
+name: Render videos
+
+on:
+  # Run it by hand from the Actions tab
+  workflow_dispatch:
+    inputs:
+      composition:
+        description: Which video to render
+        type: choice
+        default: all
+        options: [all, DailyBrief, ByTheNumbers, AutomateThis]
+  # Make (or any tool) can trigger this later with the day's props JSON
+  repository_dispatch:
+    types: [render-video]
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Render templates (manual run)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          COMP: ${{ inputs.composition }}
+        run: |
+          mkdir -p out
+          if [ "$COMP" = "all" ]; then
+            npm run render:all
+          else
+            npx remotion render "$COMP" "out/$COMP.mp4"
+          fi
+
+      - name: Render today's video (triggered by Make)
+        if: github.event_name == 'repository_dispatch'
+        env:
+          PROPS: ${{ toJSON(github.event.client_payload.props) }}
+          COMP: ${{ github.event.client_payload.composition || 'DailyBrief' }}
+        run: |
+          case "$COMP" in DailyBrief|ByTheNumbers|AutomateThis) ;; *) echo "Unknown composition: $COMP"; exit 1 ;; esac
+          mkdir -p out
+          printf '%s' "$PROPS" > props/today.json
+          npx remotion render "$COMP" out/today.mp4 --props=./props/today.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: videos
+          path: out/*.mp4
+          retention-days: 14
