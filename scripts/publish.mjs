@@ -83,9 +83,10 @@ async function getArticle() {
 function buildPosts(a) {
   const tags = "#AI #AINews #ArtificialIntelligence";
   return {
-    // Link goes in a reply, per the CurratedBrief playbook
+    // No link at all on X: automated URL posts are expensive on the X API.
+    // Add the article link yourself as a reply from the X app, per the CurratedBrief playbook.
     x: {
-      value: [cut(a.title, 260), `Full breakdown: ${a.link}`],
+      value: [cut(a.title, 270)],
       settings: { who_can_reply_post: "everyone" },
     },
     // Link goes in the first comment
