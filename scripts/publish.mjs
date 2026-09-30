@@ -64,18 +64,49 @@ const decode = (s = "") =>
 const cut = (s, n) => (s.length <= n ? s : s.slice(0, n - 1).replace(/\s+\S*$/, "") + "…");
 
 // ---------- 1. article details ----------
+// Reads a <meta property="og:..."> (or name="...") value from a page's HTML
+const meta = (html, key) => {
+  for (const tag of html.match(/<meta\b[^>]*>/gi) || []) {
+    const name = /\b(?:property|name)\s*=\s*["']([^"']+)["']/i.exec(tag)?.[1];
+    if (name?.toLowerCase() !== key) continue;
+    const m = /\bcontent\s*=\s*(?:"([^"]*)"|'([^']*)')/i.exec(tag);
+    return decode(m?.[1] ?? m?.[2] ?? "");
+  }
+  return "";
+};
+
+// Title and summary from the article page itself (the same tags X and LinkedIn use for link previews)
+async function fromPage(url) {
+  const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (compatible; CurratedBriefVideos/1.0)" } });
+  if (!res.ok) throw new Error(`page returned ${res.status}`);
+  const html = await res.text();
+  const site = meta(html, "og:site_name") || "CurratedBrief";
+  let title = meta(html, "og:title") || decode(/<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1] || "");
+  // Drop a trailing " - CurratedBrief" / " | CurratedBrief" that SEO plugins add
+  title = title.replace(new RegExp(`\\s*[-|–—]\\s*${site.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i"), "");
+  if (!title) throw new Error("no title found on the page");
+  return { title, excerpt: meta(html, "og:description") || meta(html, "description"), link: meta(html, "og:url") || url };
+}
+
 async function getArticle() {
   const fallback = { title: "Today's AI brief", excerpt: "", link: SOURCE_URL || "https://curratedbrief.com" };
   if (!SOURCE_URL) return fallback;
+  // 1st choice: the WordPress REST API
   try {
     const u = new URL(SOURCE_URL);
     const slug = u.pathname.split("/").filter(Boolean).pop();
     const res = await fetch(`${u.origin}/wp-json/wp/v2/posts?slug=${encodeURIComponent(slug)}&_fields=title,excerpt,link`);
     const [post] = await res.json();
-    if (!post) return fallback;
-    return { title: decode(post.title?.rendered), excerpt: decode(post.excerpt?.rendered), link: post.link || SOURCE_URL };
+    if (post) return { title: decode(post.title?.rendered), excerpt: decode(post.excerpt?.rendered), link: post.link || SOURCE_URL };
+    console.log("WordPress API found no post with that address, reading the article page instead.");
   } catch (e) {
-    console.log("Could not read the article from WordPress, using fallback text:", e.message);
+    console.log("WordPress API didn't answer, reading the article page instead:", e.message.slice(0, 120));
+  }
+  // 2nd choice: the article page's own title and description
+  try {
+    return await fromPage(SOURCE_URL);
+  } catch (e) {
+    console.log("Could not read the article page either, using fallback text:", e.message);
     return fallback;
   }
 }
