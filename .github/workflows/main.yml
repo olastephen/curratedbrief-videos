@@ -17,7 +17,41 @@ permissions:
   contents: read
 
 jobs:
+  # Make runs twice a day (about 10:40 and 1pm UK time); the second run is a backup.
+  # This stops the backup posting a second video when an earlier run already succeeded today.
+  check:
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+    outputs:
+      skip: ${{ steps.today.outputs.skip }}
+    steps:
+      - id: today
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          if [ "${{ github.event_name }}" != "repository_dispatch" ]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          # Midnight UK time today, written in UTC for GitHub's search
+          since=$(date -u -d @"$(TZ=Europe/London date -d "$(TZ=Europe/London date +%F) 00:00" +%s)" +%FT%TZ)
+          # If GitHub can't be asked, post anyway: a duplicate draft is better than a missed day
+          posted=$(gh api -X GET "repos/$REPO/actions/workflows/main.yml/runs" \
+            -f event=repository_dispatch -f status=success -f created=">=$since" \
+            --jq "[.workflow_runs[] | select(.id != $RUN_ID)] | length") || posted=0
+          if [ "$posted" -gt 0 ]; then
+            echo "Today's video was already posted by an earlier run, so this backup run does nothing."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No video posted yet today, so this run will render and post."
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
   render:
+    needs: check
+    if: needs.check.outputs.skip != 'true'
     # Pinned (not ubuntu-latest) so GitHub's move to Ubuntu 26 can't change the render machine
     runs-on: ubuntu-24.04
     timeout-minutes: 30
