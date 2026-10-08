@@ -20,4 +20,6 @@ export type BriefProps = {
   /** Shown in the category pill at the top, like the tags on the site */
   category: string;
   scenes: Scene[];
+  /** Set automatically when public/music.mp3 exists; no need to put it in props files */
+  hasMusic?: boolean;
 };

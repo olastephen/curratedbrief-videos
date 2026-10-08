@@ -1,10 +1,25 @@
 import React from "react";
-import { AbsoluteFill, Img, interpolate, Sequence, staticFile, useCurrentFrame } from "remotion";
+import { AbsoluteFill, Audio, Img, interpolate, Sequence, staticFile, useCurrentFrame } from "remotion";
 import { FPS, fontFamily, THEMES, type Theme } from "./brand";
 import { SceneView } from "./Scenes";
 import type { BriefProps } from "./types";
 
 export const sceneFrames = (seconds: number) => Math.round(seconds * FPS);
+
+/** Royalty-free track in public/ (from Pixabay); swap the file to change the music */
+export const MUSIC_FILE = "music.mp3";
+const MUSIC_VOLUME = 0.35;
+
+/** Fades in over half a second and out over the last 1.5 seconds; loops if the track is short */
+const Music: React.FC<{ total: number }> = ({ total }) => {
+  // Timed against the whole video: when looping, the volume callback's own frame restarts each loop
+  const frame = useCurrentFrame();
+  const volume = interpolate(frame, [0, 15, total - 45, total], [0, MUSIC_VOLUME, MUSIC_VOLUME, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  return <Audio src={staticFile(MUSIC_FILE)} loop volume={volume} />;
+};
 
 /** Story-style progress segments across the top */
 const Progress: React.FC<{ frames: number[]; t: Theme }> = ({ frames, t }) => {
@@ -37,9 +52,10 @@ const TopBar: React.FC<{ category: string; t: Theme }> = ({ category, t }) => (
   </div>
 );
 
-export const Brief: React.FC<BriefProps> = ({ theme, category, scenes }) => {
+export const Brief: React.FC<BriefProps> = ({ theme, category, scenes, hasMusic }) => {
   const t = THEMES[theme];
   const frames = scenes.map((s) => sceneFrames(s.seconds));
+  const total = frames.reduce((a, b) => a + b, 0);
   let from = 0;
   return (
     <AbsoluteFill style={{ background: t.bg, color: t.fg, fontFamily }}>
@@ -52,6 +68,7 @@ export const Brief: React.FC<BriefProps> = ({ theme, category, scenes }) => {
         from += frames[i];
         return seq;
       })}
+      {hasMusic && <Music total={total} />}
       <Progress frames={frames} t={t} />
       <TopBar category={category} t={t} />
     </AbsoluteFill>

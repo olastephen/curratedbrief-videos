@@ -51,6 +51,15 @@ Copy `props/example-today.json`, change the text, then:
 2. Make triggers a GitHub Action (or a small server) that runs `npx remotion render ... --props=...`.
 3. The MP4 is uploaded somewhere Postiz or Make can pick it up and post to X and LinkedIn.
 
+## Background music
+
+Put an MP3 at `public/music.mp3` and every video plays it quietly underneath, fading in and out
+(it loops if the track is shorter than the video). With no file there, videos render silent as before.
+Change the loudness with `MUSIC_VOLUME` in `src/Brief.tsx`.
+
+Use a track you're allowed to use commercially (for example from Pixabay Music). If the track page says
+**"Content ID Registered"**, YouTube may put copyright claims on your Shorts, so pick one without it.
+
 ## Changing the look
 
 - Colours and themes: `src/brand.ts`
